@@ -38,6 +38,9 @@ bool QPsdHandler::canRead() const
 {
     if (canRead(device())) {
         QByteArray bytes = device()->peek(6);
+
+        qDebug() << "Peeked 6 bytes" << bytes;
+
         QDataStream input(bytes);
         input.setByteOrder(QDataStream::BigEndian);
         quint32 signature;
@@ -309,7 +312,11 @@ bool QPsdHandler::read(QImage *image)
 
 bool QPsdHandler::canRead(QIODevice *device)
 {
-    return device->peek(4) == "8BPS";
+    auto peeked = device->peek(4);
+
+    qDebug() << "Peeked 4 bytes" << peeked;
+
+    return peeked == "8BPS";
 }
 
 QVariant QPsdHandler::option(ImageOption option) const

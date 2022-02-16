@@ -39,15 +39,23 @@ QStringList QPsdPlugin::keys() const
 QImageIOPlugin::Capabilities QPsdPlugin::capabilities(
     QIODevice *device, const QByteArray &format) const
 {
-    if (format == "psd" || format == "psb")
-        return Capabilities(CanRead);//TODO: add CanWrite support
+    if (format == "psd" || format == "psb") {
+        qDebug() << "Format detected:" << format;
+        return Capabilities(CanRead); //TODO: add CanWrite support
+    }
 
-    if (!(format.isEmpty() && device->isOpen()))
+
+    if (!(format.isEmpty() && device->isOpen())) {
+        qDebug() << "Format and device cannot be read";
         return { };
+    }
 
     Capabilities cap;
-    if (device->isReadable() && QPsdHandler::canRead(device))
+    if (device->isReadable() && QPsdHandler::canRead(device)) {
+        qDebug() << "Device is readable, add capability";
         cap |= CanRead;
+    }
+
     return cap;
 }
 
