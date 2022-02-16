@@ -38,21 +38,24 @@ bool QPsdHandler::canRead() const
 {
     if (canRead(device())) {
         QByteArray bytes = device()->peek(6);
-
-        qDebug() << "Peeked 6 bytes" << bytes;
-
         QDataStream input(bytes);
         input.setByteOrder(QDataStream::BigEndian);
+
         quint32 signature;
         quint16 version;
         input >> signature >> version;
-        if (version == 1)
+
+        if (version == 1) {
             setFormat("psd");
-        else if (version == 2)
+        } else if (version == 2) {
             setFormat("psb");
-        else return false;
+        } else {
+            return false;
+        }
+
         return true;
     }
+
     return false;
 }
 
@@ -312,11 +315,7 @@ bool QPsdHandler::read(QImage *image)
 
 bool QPsdHandler::canRead(QIODevice *device)
 {
-    auto peeked = device->peek(4);
-
-    qDebug() << "Peeked 4 bytes" << peeked;
-
-    return peeked == "8BPS";
+    return device->peek(4) == "8BPS";
 }
 
 QVariant QPsdHandler::option(ImageOption option) const
