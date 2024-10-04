@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
+cmake_policy(VERSION 3.20)
 
 project(qpsd)
 
@@ -55,27 +56,29 @@ execute_process(
   OUTPUT_VARIABLE QT_PLUGINS_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-if (QT_PLUGINS_DIR)
+# Prefix with DESTDIR if available to allow packaging
+if (DEFINED ENV{DESTDIR})
+  set(plugins_dir "$ENV{DESTDIR}/plugins")
+else ()
+  set(plugins_dir "${QT_PLUGINS_DIR}")
+endif ()
 
+set(INSTALL_PATH "${plugins_dir}/imageformats")
+
+cmake_path(ABSOLUTE_PATH INSTALL_PATH NORMALIZE)
+
+install(
+  TARGETS ${PROJECT_NAME}
+  LIBRARY DESTINATION ${INSTALL_PATH})
+
+if (QT_PLUGINS_DIR)
   # status
   message(STATUS "")
   message(STATUS "-----------------------------------------------------------------------------")
   message(STATUS " ${PROJECT_NAME} configured")
   message(STATUS " <https://github.com/Code-ReaQtor/libqpsd>")
-  message(STATUS " it will be installed to ${QT_PLUGINS_DIR}/imageformats")
+  message(STATUS " it will be installed to ${INSTALL_PATH}")
   message(STATUS "-----------------------------------------------------------------------------")
-  
 else ()
   message(FATAL_ERROR "Qt5 plugin directory cannot be detected.")
 endif ()
-
-# Prefix with DESTDIR if available to allow packaging
-if (ENV{DESTDIR} AND NOT ENV{DESTDIR} STREQUAL "")
-  set(plugins_dir "$ENV{DESTDIR}${QT_PLUGINS_DIR}")
-else ()
-  set(plugins_dir "${QT_PLUGINS_DIR}")
-endif ()
-
-install(
-  TARGETS ${PROJECT_NAME}
-  LIBRARY DESTINATION "${plugins_dir}/imageformats")
