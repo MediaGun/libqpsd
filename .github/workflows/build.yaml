@@ -46,8 +46,10 @@ jobs:
           tools: 'tools_ninja'
 
       - name: Configure
+        env:
+          DESTDIR: ${{ env.install_prefix }}
         run: |
-          cmake -S . -B ${{ env.build_dir }} -GNinja -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX=${{ env.install_prefix }}
+          cmake -S . -B ${{ env.build_dir }} -GNinja -DCMAKE_BUILD_TYPE:STRING=Release
 
       - name: Build
         run: cmake --build ${{ env.build_dir }}
@@ -93,6 +95,8 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@master
 
       - name: Configure
+        env:
+          DESTDIR: ${{ env.install_prefix }}
         run: |
           call "${{ env.vcvars }}"
           cmake -S . -B ${{ env.build_dir }} -GNinja "-DCMAKE_CXX_COMPILER=${{ env.cmake_cxx_compiler }}" "-DCMAKE_C_COMPILER=${{ env.cmake_c_compiler }}" -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX="${{ env.install_prefix }}"
@@ -142,6 +146,8 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@master
 
       - name: Configure
+        env:
+          DESTDIR: ${{ env.install_prefix }}
         run: |
           cmake -S . -B ${{ env.build_dir }} -GNinja -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX=${{ env.install_prefix }}
 
