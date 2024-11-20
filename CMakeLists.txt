@@ -27,6 +27,14 @@ get_filename_component(QT_QMAKE_PATH ${QT_QMAKE_EXECUTABLE} PATH)
 set(QT_ROOT ${QT_QMAKE_PATH}/)
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${QT_QMAKE_PATH}/../lib/cmake/Qt${QT_VERSION_MAJOR})
 
+# Support macOS 10.6 or later (64-bit only)
+if(NOT IOS AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ferror-limit=0")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ferror-limit=0")
+
+  set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+endif()
+
 
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Core REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Gui REQUIRED)
