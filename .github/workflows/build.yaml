@@ -7,6 +7,7 @@ on:
       - master
       - test
       - qt-6.8
+      - qt-6.12
   workflow_dispatch:
 
 concurrency:
@@ -17,12 +18,14 @@ permissions:
   packages: write
 
 env:
-  qt_version: 6.8.0
+  qt_version: 6.12.0
 
 jobs:
   build_linux:
     name: Build for Linux
     runs-on: [ ubuntu-24.04 ]
+    # The maximum for GitHub-hosted runners.
+    timeout-minutes: 360
 
     env:
       build_dir: './build'
@@ -67,6 +70,8 @@ jobs:
   build_windows:
     name: Build for Windows
     runs-on: [ windows-2022 ]
+    # The maximum for GitHub-hosted runners.
+    timeout-minutes: 360
 
     env:
       build_dir: './build'
@@ -74,15 +79,16 @@ jobs:
       libs_dir: '${{ github.workspace }}/libs_deps'
       qt_dir: ${{ github.workspace }}
       qt_tools_dir: ${{ github.workspace }}/Qt/Tools
-      cmake_c_compiler: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808\bin\HostX64\x64\cl.exe'
-      cmake_cxx_compiler: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808\bin\HostX64\x64\cl.exe'
-      vcvars: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
 
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
+
+      # The runner's MSVC (cl.exe and its environment), whatever toolset version the image has.
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -100,19 +106,16 @@ jobs:
         env:
           DESTDIR: ${{ env.install_prefix }}
         run: |
-          call "${{ env.vcvars }}"
-          cmake -S . -B ${{ env.build_dir }} -GNinja "-DCMAKE_CXX_COMPILER=${{ env.cmake_cxx_compiler }}" "-DCMAKE_C_COMPILER=${{ env.cmake_c_compiler }}" -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX="${{ env.install_prefix }}"
+          cmake -S . -B ${{ env.build_dir }} -GNinja -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX="${{ env.install_prefix }}"
         shell: cmd
 
       - name: Build
         run: |
-          call "${{ env.vcvars }}"
           cmake --build ${{ env.build_dir }}
         shell: cmd
 
       - name: Install
         run: |
-          call "${{ env.vcvars }}"
           cmake --install ${{ env.build_dir }}
         shell: cmd
 
@@ -124,7 +127,9 @@ jobs:
 
   build_macos:
     name: Build for MacOS
-    runs-on: [ macos-13 ]
+    runs-on: [ macos-26 ]
+    # The maximum for GitHub-hosted runners.
+    timeout-minutes: 360
 
     env:
       build_dir: './build'
