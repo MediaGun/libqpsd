@@ -74,9 +74,12 @@ set(INSTALL_PATH "${plugins_dir}/imageformats")
 
 cmake_path(ABSOLUTE_PATH INSTALL_PATH NORMALIZE)
 
+# The plugin goes into imageformats on every platform: on Windows the DLL is a RUNTIME file, which
+# would otherwise go to bin/, where Qt doesn't look for plugins.
 install(
   TARGETS ${PROJECT_NAME}
-  LIBRARY DESTINATION ${INSTALL_PATH})
+  LIBRARY DESTINATION ${INSTALL_PATH}
+  RUNTIME DESTINATION ${INSTALL_PATH})
 
 if (QT_PLUGINS_DIR)
   # status

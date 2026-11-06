@@ -69,6 +69,11 @@ jobs:
       - name: Install
         run: cmake --install ${{ env.build_dir }}
 
+      # The app unpacks the release into Qt's folder: Qt only loads the plugin from plugins/imageformats.
+      - name: Check the plugin's location
+        shell: bash
+        run: ls -l "${{ env.install_prefix }}"/plugins/imageformats/*qpsd*
+
       - name: Publish
         uses: actions/upload-artifact@v4
         with:
@@ -128,6 +133,11 @@ jobs:
           cmake --install ${{ env.build_dir }}
         shell: cmd
 
+      # The app unpacks the release into Qt's folder: Qt only loads the plugin from plugins/imageformats.
+      - name: Check the plugin's location
+        shell: bash
+        run: ls -l "${{ env.install_prefix }}"/plugins/imageformats/*qpsd*
+
       - name: Publish
         uses: actions/upload-artifact@v4
         with:
@@ -174,6 +184,11 @@ jobs:
       - name: Install
         run: cmake --install ${{ env.build_dir }}
 
+      # The app unpacks the release into Qt's folder: Qt only loads the plugin from plugins/imageformats.
+      - name: Check the plugin's location
+        shell: bash
+        run: ls -l "${{ env.install_prefix }}"/plugins/imageformats/*qpsd*
+
       - name: Publish
         uses: actions/upload-artifact@v4
         with:
@@ -200,6 +215,8 @@ jobs:
         working-directory: artifacts
         run: |
           for platform in linux windows macos; do
+            ls libqpsd-$platform/plugins/imageformats/*qpsd* > /dev/null ||
+              { echo "::error::libqpsd-$platform has no plugins/imageformats/*qpsd*"; exit 1; }
             (cd libqpsd-$platform && zip -r -y ../../libqpsd-$platform.zip .)
           done
           ls -la ..
