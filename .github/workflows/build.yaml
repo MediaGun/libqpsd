@@ -8,6 +8,9 @@ on:
       - test
       - qt-6.8
       - qt-6.12
+    tags:
+      - 'v*'
+      - 'qt-*'
   workflow_dispatch:
 
 concurrency:
@@ -169,3 +172,35 @@ jobs:
         with:
           name: libqpsd-macos
           path: ${{ env.install_prefix }}
+
+  # On a tag (e.g. qt-6.12.0): a GitHub release with one zip per platform, laid out as the app's
+  # build.yaml downloads them (plugins/imageformats/..., extracted into Qt).
+  release:
+    name: Publish release
+    if: github.ref_type == 'tag'
+    needs: [ build_linux, build_windows, build_macos ]
+    runs-on: [ ubuntu-24.04 ]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Package
+        working-directory: artifacts
+        run: |
+          for platform in linux windows macos; do
+            (cd libqpsd-$platform && zip -r -y ../../libqpsd-$platform.zip .)
+          done
+          ls -la ..
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: libqpsd ${{ github.ref_name }} for Qt ${{ env.qt_version }}
+          body: |
+            The PSD image plugin, built against Qt ${{ env.qt_version }} for Linux, Windows and macOS.
+          files: libqpsd-*.zip
