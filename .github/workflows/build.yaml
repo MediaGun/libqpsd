@@ -7,6 +7,10 @@ on:
       - master
       - test
       - qt-6.8
+      - qt-6.12
+    tags:
+      - 'v*'
+      - 'qt-*'
   workflow_dispatch:
 
 concurrency:
@@ -17,12 +21,18 @@ permissions:
   packages: write
 
 env:
-  qt_version: 6.8.0
+  qt_version: 6.12.0
+  # aqtinstall 3.3.0, the latest release, can't install Qt 6.11+ on Windows ("Failed to locate XML
+  # data for Qt version"): it doesn't know the per-architecture repository folders. Its master
+  # does; pinned to a commit until a release has it.
+  aqt_source: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
 
 jobs:
   build_linux:
     name: Build for Linux
     runs-on: [ ubuntu-24.04 ]
+    # The maximum for GitHub-hosted runners.
+    timeout-minutes: 360
 
     env:
       build_dir: './build'
@@ -42,6 +52,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
+          aqtsource: ${{ env.aqt_source }}
           version: ${{ env.qt_version }}
           dir: ${{ github.workspace }}
           tools: 'tools_ninja'
@@ -67,6 +78,8 @@ jobs:
   build_windows:
     name: Build for Windows
     runs-on: [ windows-2022 ]
+    # The maximum for GitHub-hosted runners.
+    timeout-minutes: 360
 
     env:
       build_dir: './build'
@@ -74,9 +87,6 @@ jobs:
       libs_dir: '${{ github.workspace }}/libs_deps'
       qt_dir: ${{ github.workspace }}
       qt_tools_dir: ${{ github.workspace }}/Qt/Tools
-      cmake_c_compiler: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808\bin\HostX64\x64\cl.exe'
-      cmake_cxx_compiler: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808\bin\HostX64\x64\cl.exe'
-      vcvars: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
 
     steps:
       - name: Check out repository code
@@ -84,9 +94,14 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
+      # The runner's MSVC (cl.exe and its environment), whatever toolset version the image has.
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
+          aqtsource: ${{ env.aqt_source }}
           version: ${{ env.qt_version }}
           arch: 'win64_msvc2022_64'
           dir: ${{ github.workspace }}
@@ -100,19 +115,16 @@ jobs:
         env:
           DESTDIR: ${{ env.install_prefix }}
         run: |
-          call "${{ env.vcvars }}"
-          cmake -S . -B ${{ env.build_dir }} -GNinja "-DCMAKE_CXX_COMPILER=${{ env.cmake_cxx_compiler }}" "-DCMAKE_C_COMPILER=${{ env.cmake_c_compiler }}" -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX="${{ env.install_prefix }}"
+          cmake -S . -B ${{ env.build_dir }} -GNinja -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX="${{ env.install_prefix }}"
         shell: cmd
 
       - name: Build
         run: |
-          call "${{ env.vcvars }}"
           cmake --build ${{ env.build_dir }}
         shell: cmd
 
       - name: Install
         run: |
-          call "${{ env.vcvars }}"
           cmake --install ${{ env.build_dir }}
         shell: cmd
 
@@ -124,7 +136,9 @@ jobs:
 
   build_macos:
     name: Build for MacOS
-    runs-on: [ macos-13 ]
+    runs-on: [ macos-26 ]
+    # The maximum for GitHub-hosted runners.
+    timeout-minutes: 360
 
     env:
       build_dir: './build'
@@ -140,6 +154,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
+          aqtsource: ${{ env.aqt_source }}
           version: ${{ env.qt_version }}
           dir: ${{ github.workspace }}
           tools: 'tools_ninja'
@@ -164,3 +179,35 @@ jobs:
         with:
           name: libqpsd-macos
           path: ${{ env.install_prefix }}
+
+  # On a tag (e.g. qt-6.12.0): a GitHub release with one zip per platform, laid out as the app's
+  # build.yaml downloads them (plugins/imageformats/..., extracted into Qt).
+  release:
+    name: Publish release
+    if: github.ref_type == 'tag'
+    needs: [ build_linux, build_windows, build_macos ]
+    runs-on: [ ubuntu-24.04 ]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Package
+        working-directory: artifacts
+        run: |
+          for platform in linux windows macos; do
+            (cd libqpsd-$platform && zip -r -y ../../libqpsd-$platform.zip .)
+          done
+          ls -la ..
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: libqpsd ${{ github.ref_name }} for Qt ${{ env.qt_version }}
+          body: |
+            The PSD image plugin, built against Qt ${{ env.qt_version }} for Linux, Windows and macOS.
+          files: libqpsd-*.zip
